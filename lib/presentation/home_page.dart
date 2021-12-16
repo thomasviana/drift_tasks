@@ -13,11 +13,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool showCompleted = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tasks'),
+        title: Container(
+          alignment: Alignment.centerLeft,
+          child: const Text(
+            'Tasks',
+          ),
+        ),
+        actions: [
+          _buildCompletedOnlySwitch(),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -32,10 +41,25 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Row _buildCompletedOnlySwitch() {
+    return Row(
+      children: [
+        const Text('Completed only'),
+        Switch(
+            value: showCompleted,
+            onChanged: (newValue) {
+              setState(() {
+                showCompleted = newValue;
+              });
+            })
+      ],
+    );
+  }
+
   StreamBuilder<List<Task>> _buildTaskList(BuildContext context) {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final dao = Provider.of<TaskDao>(context, listen: false);
     return StreamBuilder(
-        stream: database.watchAllTasks(),
+        stream: showCompleted ? dao.watchCompletedTasks() : dao.watchAllTasks(),
         builder: (context, AsyncSnapshot<List<Task>> snapshot) {
           final tasks = snapshot.data ?? [];
           print(tasks);
@@ -43,19 +67,19 @@ class _HomePageState extends State<HomePage> {
               itemCount: tasks.length,
               itemBuilder: (_, index) {
                 final itemTask = tasks[index];
-                return _builListItem(itemTask, database);
+                return _builListItem(itemTask, dao);
               });
         });
   }
 
-  Widget _builListItem(Task itemTask, AppDatabase database) {
+  Widget _builListItem(Task itemTask, TaskDao dao) {
     return Slidable(
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
             flex: 2,
-            onPressed: (_) => database.deleteTask(itemTask),
+            onPressed: (_) => dao.deleteTask(itemTask),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             icon: Icons.archive,
@@ -68,7 +92,7 @@ class _HomePageState extends State<HomePage> {
         subtitle: Text(itemTask.dueDate?.toString() ?? 'No date'),
         value: itemTask.completed,
         onChanged: (newValue) {
-          database.updateTask(
+          dao.updateTask(
             itemTask.copyWith(completed: newValue),
           );
         },

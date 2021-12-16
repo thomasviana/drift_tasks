@@ -16,8 +16,8 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Provider<AppDatabase>(
-      create: (_) => AppDatabase(),
+    return Provider(
+      create: (_) => AppDatabase().taskDao,
       child: const MaterialApp(
         title: 'Material App',
         home: HomePage(),
