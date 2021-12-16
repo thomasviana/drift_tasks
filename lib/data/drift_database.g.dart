@@ -11,8 +11,12 @@ class Task extends DataClass implements Insertable<Task> {
   final int id;
   final String name;
   final DateTime? dueDate;
-  final bool? completed;
-  Task({required this.id, required this.name, this.dueDate, this.completed});
+  final bool completed;
+  Task(
+      {required this.id,
+      required this.name,
+      this.dueDate,
+      required this.completed});
   factory Task.fromData(Map<String, dynamic> data, {String? prefix}) {
     final effectivePrefix = prefix ?? '';
     return Task(
@@ -23,7 +27,7 @@ class Task extends DataClass implements Insertable<Task> {
       dueDate: const DateTimeType()
           .mapFromDatabaseResponse(data['${effectivePrefix}due_date']),
       completed: const BoolType()
-          .mapFromDatabaseResponse(data['${effectivePrefix}completed']),
+          .mapFromDatabaseResponse(data['${effectivePrefix}completed'])!,
     );
   }
   @override
@@ -34,9 +38,7 @@ class Task extends DataClass implements Insertable<Task> {
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<DateTime?>(dueDate);
     }
-    if (!nullToAbsent || completed != null) {
-      map['completed'] = Variable<bool?>(completed);
-    }
+    map['completed'] = Variable<bool>(completed);
     return map;
   }
 
@@ -47,9 +49,7 @@ class Task extends DataClass implements Insertable<Task> {
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDate),
-      completed: completed == null && nullToAbsent
-          ? const Value.absent()
-          : Value(completed),
+      completed: Value(completed),
     );
   }
 
@@ -60,7 +60,7 @@ class Task extends DataClass implements Insertable<Task> {
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
-      completed: serializer.fromJson<bool?>(json['completed']),
+      completed: serializer.fromJson<bool>(json['completed']),
     );
   }
   @override
@@ -70,7 +70,7 @@ class Task extends DataClass implements Insertable<Task> {
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'dueDate': serializer.toJson<DateTime?>(dueDate),
-      'completed': serializer.toJson<bool?>(completed),
+      'completed': serializer.toJson<bool>(completed),
     };
   }
 
@@ -108,7 +108,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<int> id;
   final Value<String> name;
   final Value<DateTime?> dueDate;
-  final Value<bool?> completed;
+  final Value<bool> completed;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -125,7 +125,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<DateTime?>? dueDate,
-    Expression<bool?>? completed,
+    Expression<bool>? completed,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -139,7 +139,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       {Value<int>? id,
       Value<String>? name,
       Value<DateTime?>? dueDate,
-      Value<bool?>? completed}) {
+      Value<bool>? completed}) {
     return TasksCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
@@ -161,7 +161,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       map['due_date'] = Variable<DateTime?>(dueDate.value);
     }
     if (completed.present) {
-      map['completed'] = Variable<bool?>(completed.value);
+      map['completed'] = Variable<bool>(completed.value);
     }
     return map;
   }
@@ -205,7 +205,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   final VerificationMeta _completedMeta = const VerificationMeta('completed');
   @override
   late final GeneratedColumn<bool?> completed = GeneratedColumn<bool?>(
-      'completed', aliasedName, true,
+      'completed', aliasedName, false,
       type: const BoolType(),
       requiredDuringInsert: false,
       defaultConstraints: 'CHECK (completed IN (0, 1))',
@@ -258,8 +258,25 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(SqlTypeSystem.defaultInstance, e);
   late final $TasksTable tasks = $TasksTable(this);
+  late final TaskDao taskDao = TaskDao(this as AppDatabase);
   @override
   Iterable<TableInfo> get allTables => allSchemaEntities.whereType<TableInfo>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [tasks];
+}
+
+// **************************************************************************
+// DaoGenerator
+// **************************************************************************
+
+mixin _$TaskDaoMixin on DatabaseAccessor<AppDatabase> {
+  $TasksTable get tasks => attachedDatabase.tasks;
+  Selectable<Task> completedTaskGenerated() {
+    return customSelect(
+        'SELECT * FROM tasks WHERE completed = 1 ORDER BY due_date DESC, name;',
+        variables: [],
+        readsFrom: {
+          tasks,
+        }).map(tasks.mapFromRow);
+  }
 }
