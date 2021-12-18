@@ -1,4 +1,5 @@
 import 'package:drift_tasks/data/drift_database.dart';
+import 'package:drift_tasks/presentation/widgets/new_tag_input_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
@@ -18,23 +19,16 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Container(
-          alignment: Alignment.centerLeft,
-          child: const Text(
-            'Tasks',
-          ),
+        title: const Text(
+          'Tasks',
         ),
-        actions: [
-          _buildCompletedOnlySwitch(),
-        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            Expanded(
-              child: _buildTaskList(context),
-            ),
+            Expanded(child: _buildTaskList(context)),
             const NewTaskInput(),
+            const NewTagInput(),
           ],
         ),
       ),
@@ -56,47 +50,73 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  StreamBuilder<List<Task>> _buildTaskList(BuildContext context) {
-    final dao = Provider.of<TaskDao>(context, listen: false);
+  StreamBuilder<List<TaskWithTag>> _buildTaskList(BuildContext context) {
+    final dao = Provider.of<TaskDao>(context);
     return StreamBuilder(
-        stream: showCompleted ? dao.watchCompletedTasks() : dao.watchAllTasks(),
-        builder: (context, AsyncSnapshot<List<Task>> snapshot) {
+        stream: dao.watchAllTasks(),
+        builder: (context, AsyncSnapshot<List<TaskWithTag>> snapshot) {
           final tasks = snapshot.data ?? [];
           print(tasks);
           return ListView.builder(
               itemCount: tasks.length,
               itemBuilder: (_, index) {
-                final itemTask = tasks[index];
-                return _builListItem(itemTask, dao);
+                final item = tasks[index];
+                return _builListItem(item, dao);
               });
         });
   }
 
-  Widget _builListItem(Task itemTask, TaskDao dao) {
+  Widget _builListItem(TaskWithTag item, TaskDao dao) {
     return Slidable(
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
             flex: 2,
-            onPressed: (_) => dao.deleteTask(itemTask),
+            onPressed: (_) => dao.deleteTask(item.task),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             icon: Icons.archive,
-            label: 'Archive',
+            label: 'Delete',
           ),
         ],
       ),
       child: CheckboxListTile(
-        title: Text(itemTask.name),
-        subtitle: Text(itemTask.dueDate?.toString() ?? 'No date'),
-        value: itemTask.completed,
+        title: Text(item.task.name),
+        subtitle: Text(item.task.dueDate?.toString() ?? 'No date'),
+        secondary: _buildTag(item.tag),
+        value: item.task.completed,
         onChanged: (newValue) {
           dao.updateTask(
-            itemTask.copyWith(completed: newValue),
+            item.task.copyWith(completed: newValue),
           );
         },
       ),
+    );
+  }
+
+  Column _buildTag(Tag? tag) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        if (tag != null) ...[
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(tag.color),
+            ),
+          ),
+          Text(
+            tag.name,
+            style: TextStyle(
+              color: Colors.black.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
