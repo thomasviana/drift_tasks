@@ -14,10 +14,19 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
+  final db = AppDatabase();
+
   @override
   Widget build(BuildContext context) {
-    return Provider(
-      create: (_) => AppDatabase().taskDao,
+    return MultiProvider(
+      providers: [
+        Provider<TaskDao>(
+          create: (_) => db.taskDao,
+        ),
+        Provider<TagDao>(
+          create: (_) => db.tagDao,
+        ),
+      ],
       child: const MaterialApp(
         title: 'Material App',
         home: HomePage(),
